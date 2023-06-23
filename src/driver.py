@@ -29,8 +29,6 @@ log_file = "log_{}_sr{}_lt{}_bs{}.csv".format(
 f_results = []
 execution_times = []
 logs = []
-
-
 total_time = 0
 hitflag = []
 count = 0
