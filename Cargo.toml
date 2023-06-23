@@ -1,8 +1,13 @@
 [package]
-name = "bootstrap_CS2"
+name = "bootstrap_cs2"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+rusqlite = "0.29.0"
+rand = "0.8.4"
+nom = "7.1.0"
+statrs = "0.16.0"
+regex = "1.5.4"
