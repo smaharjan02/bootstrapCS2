@@ -1,62 +1,3 @@
-CREATE TABLE part (
-    p_partkey INT PRIMARY KEY,
-    p_name VARCHAR(55),
-    p_mfgr CHAR(25),
-    p_brand CHAR(10),
-    p_type VARCHAR(25),
-    p_size INT,
-    p_container CHAR(10),
-    p_retailprice DECIMAL,
-    p_comment VARCHAR(23)
-);
-
-CREATE TABLE supplier (
-    s_suppkey INT PRIMARY KEY,
-    s_name CHAR(25),
-    s_address VARCHAR(40),
-    s_nationkey INT,
-    s_phone CHAR(15),
-    s_acctbal DECIMAL,
-    s_comment VARCHAR(101),
-    FOREIGN KEY (s_nationkey) REFERENCES nation(n_nationkey)
-);
-
-CREATE TABLE partsupp (
-    ps_partkey INT,
-    ps_suppkey INT,
-    ps_availqty INT,
-    ps_supplycost DECIMAL,
-    ps_comment VARCHAR(199),
-    PRIMARY KEY (ps_partkey, ps_suppkey),
-    FOREIGN KEY (ps_partkey) REFERENCES part(p_partkey),
-    FOREIGN KEY (ps_suppkey) REFERENCES supplier(s_suppkey)
-);
-
-CREATE TABLE customer (
-    c_custkey INT PRIMARY KEY,
-    c_name VARCHAR(25),
-    c_address VARCHAR(40),
-    c_nationkey INT,
-    c_phone CHAR(15),
-    c_acctbal DECIMAL,
-    c_mktsegment CHAR(10),
-    c_comment VARCHAR(117),
-    FOREIGN KEY (c_nationkey) REFERENCES nation(n_nationkey)
-);
-
-CREATE TABLE orders (
-    o_orderkey INT PRIMARY KEY,
-    o_custkey INT,
-    o_orderstatus CHAR(1),
-    o_totalprice DECIMAL,
-    o_orderdate DATE,
-    o_orderpriority CHAR(15),
-    o_clerk CHAR(15),
-    o_shippriority INT,
-    o_comment VARCHAR(79),
-    FOREIGN KEY (o_custkey) REFERENCES customer(c_custkey)
-);
-
 CREATE TABLE lineitem (
     l_orderkey INT,
     l_partkey INT,
@@ -81,6 +22,31 @@ CREATE TABLE lineitem (
     FOREIGN KEY (l_partkey, l_suppkey) REFERENCES partsupp(ps_partkey, ps_suppkey)
 );
 
+CREATE TABLE orders (
+    o_orderkey INT PRIMARY KEY,
+    o_custkey INT,
+    o_orderstatus CHAR(1),
+    o_totalprice DECIMAL,
+    o_orderdate DATE,
+    o_orderpriority CHAR(15),
+    o_clerk CHAR(15),
+    o_shippriority INT,
+    o_comment VARCHAR(79),
+    FOREIGN KEY (o_custkey) REFERENCES customer(c_custkey)
+);
+
+CREATE TABLE customer (
+    c_custkey INT PRIMARY KEY,
+    c_name VARCHAR(25),
+    c_address VARCHAR(40),
+    c_nationkey INT,
+    c_phone CHAR(15),
+    c_acctbal DECIMAL,
+    c_mktsegment CHAR(10),
+    c_comment VARCHAR(117),
+    FOREIGN KEY (c_nationkey) REFERENCES nation(n_nationkey)
+);
+
 CREATE TABLE nation (
     n_nationkey INT PRIMARY KEY,
     n_name CHAR(25),
@@ -97,12 +63,9 @@ CREATE TABLE region (
 
 .mode tabs
 .separator '|'
-.import 'data_100m/lineitem.tbl' lineitem
-.import 'data_100m/order.tbl' orders
-.import 'data_100m/nation.tbl' nation
-.import 'data_100m/region.tbl' region
-.import 'data_100m/part.tbl' part
-.import 'data_100m/supplier.tbl' supplier
-.import 'data_100m/partsupp.tbl' partsupp
-.import 'data_100m/customer.tbl' customer
+.import 'data_10g/lineitem.tbl' lineitem
+.import 'data_10g/order.tbl' orders
+.import 'data_10g/nation.tbl' nation
+.import 'data_10g/region.tbl' region
+.import 'data_10g/customer.tbl' customer
 
