@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
-// use std:: {collections::HashMap};
 use rand::seq::IteratorRandom;
-use rusqlite::{params, Connection, Result};
+use rusqlite::{params, Connection};
+use std::collections::HashMap;
 
 //s*1 and the lineitem are same (s*1 is the sample(SRSWOR) of lineitem)
 #[derive(Clone, Debug)]
@@ -27,7 +25,7 @@ pub struct S1Sample {
 }
 
 impl S1Sample {
-    fn from_row(row: &rusqlite::Row) -> Result<Self> {
+    fn from_row(row: &rusqlite::Row) -> Result<Self, rusqlite::Error> {
         Ok(S1Sample {
             l_orderkey: row.get(0)?,
             l_partkey: row.get(1)?,
@@ -47,25 +45,12 @@ impl S1Sample {
             l_comment: row.get(15)?,
         })
     }
-
-    //getter and setter
-}
-
-pub fn groundtruth(conn: &Connection, query: &str) -> Result<i64> {
-    let mut stmt = conn.prepare(query)?;
-    let mut rows = stmt.query(params![])?;
-
-    if let Some(row) = rows.next()? {
-        return Ok(row.get(0)?);
-    }
-
-    Ok(0)
 }
 
 pub fn create_sample(
     conn: &Connection,
     sample_fraction: f64,
-) -> Result<(Vec<S1Sample>, usize), Box<dyn std::error::Error>> {
+) -> Result<Vec<S1Sample>, Box<dyn std::error::Error>> {
     // // Open the SQLite database connection
     // let conn = Connection::open(db_file)?;
 
@@ -77,7 +62,7 @@ pub fn create_sample(
     let all_rows = stmt
         .query_map([], S1Sample::from_row)?
         .collect::<Result<Vec<S1Sample>, _>>()?;
-    let count_lineitem = all_rows.len();
+
     // Calculate the sample size
     let sample_size = (all_rows.len() as f64 * sample_fraction).floor() as usize;
 
@@ -96,7 +81,19 @@ pub fn create_sample(
     // let sample_ground_truth = sample.iter().map(|row| row.l_quantity).sum::<f64>();
     // let database_ground_truth = all_rows.iter().map(|row| row.l_quantity).sum::<f64>();
 
-    Ok((sample, count_lineitem))
+    Ok(sample)
+}
+
+//Function to get the groundtruth
+pub fn groundtruth(conn: &Connection, query: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    let mut stmt = conn.prepare(query)?;
+    let mut rows = stmt.query(params![])?;
+
+    if let Some(row) = rows.next()? {
+        return Ok(row.get(0)?);
+    }
+
+    Ok(0)
 }
 
 //hashmap for S*1 Sample with SRSWOR
@@ -130,12 +127,4 @@ pub fn s1_sample_hashmap(lineitems: &[S1Sample]) -> Vec<HashMap<String, String>>
     }
 
     hashmaps
-}
-
-pub fn sample_ground_truth(query_result: &Vec<i64>, sample_size: f64) -> i64 {
-    let sum: i64 = query_result.iter().sum::<i64>() as i64;
-
-    //calculating the sample ground truth by dividing the sum by the sample size
-    let y = sum as f64 / sample_size;
-    y as i64
 }

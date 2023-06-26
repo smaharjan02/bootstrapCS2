@@ -62,7 +62,7 @@ pub struct Where {
 }
 
 impl Where {
-    fn new(left: String, right: String, operator: String) -> Where {
+    pub fn new(left: String, right: String, operator: String) -> Where {
         Where {
             left,
             right,

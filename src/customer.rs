@@ -1,8 +1,7 @@
-
-use rusqlite::{Connection, Result,Row};
+use rusqlite::{Connection, Result, Row};
 use std::error::Error;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Customer {
     pub c_custkey: i32,
     pub c_name: String,
@@ -30,13 +29,15 @@ impl Customer {
 }
 
 pub fn customer_data(conn: &Connection) -> Result<Vec<Customer>, Box<dyn Error>> {
-    // Define the SQL query to retrieve all rows from the customer table
+    // Define the SQL query to retrieve all rows from the orders table
     let query = "SELECT * FROM customer;";
 
-    // Execute the query and get all the rows
+    // Execute the query and get a streaming iterator
     let mut stmt = conn.prepare(query)?;
-    let all_rows = stmt.query_map([], Customer::from_row)?.collect::<Result<Vec<Customer>, _>>()?;
+    let stream = stmt.query_map([], Customer::from_row)?;
+
+    // Collect the streamed data into a vector
+    let all_rows = stream.collect::<Result<Vec<Customer>, _>>()?;
 
     Ok(all_rows)
 }
-

@@ -16,7 +16,7 @@ cargo run -- -d tpch_100m.db -s 0.1 -b 1000
 
 # Run multiple query multiple time
 
-python3 driver.py -df tpch_100m -sr 0.1 -ls 10 -bs 1000
+python3 driver.py -df tpch_100m.db -sr 0.1 -ls 10 -bs 1000
 
 -df = name of the sqlite database
 -sr = sample ratio

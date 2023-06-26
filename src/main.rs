@@ -14,10 +14,10 @@ mod samples;
 #[allow(unused_imports)]
 use crate::{
     bootstrap::{
-        bootstrap_sums, calculate_mean, calculate_std_error, random_sample_with_replacement,
+        bootstrap_sums, calculate_mean, calculate_variance, random_sample_with_replacement,
     },
     customer::customer_data,
-    data_sampling::{create_sample, groundtruth, s1_sample_hashmap, sample_ground_truth, S1Sample},
+    data_sampling::{create_sample, groundtruth, s1_sample_hashmap, S1Sample},
     orders::orders_data,
     parser::{parse_sql_query, Where},
     samples::{
@@ -25,6 +25,7 @@ use crate::{
         S2Sample, S3Sample,
     },
 };
+
 use std::env;
 use std::time::Instant;
 
@@ -86,7 +87,8 @@ fn main() {
     let sample_fraction = get_argument_value(&args, "-s")
         .expect("Missing -s <sample_fraction> argument")
         .parse::<f64>()
-        .expect("Sample fraction must be a valid floating-point number");
+        .expect("Sample fraction must be a valid floating-point number")
+        / 100.0;
 
     // Retrieve the value associated with the "-b" flag, which represents the bootstrap size.
     let bootstrap_size = get_argument_value(&args, "-b")
@@ -118,7 +120,7 @@ fn main() {
     println!("Database Ground Truth: {}", database_ground_truth);
 
     //Using SRSWOR to create a sample of the LineItem table (S*1)
-    let (s1_samples, _count) = create_sample(&conn, sample_fraction).unwrap();
+    let s1_samples = create_sample(&conn, sample_fraction).unwrap();
 
     //getting all the data from the orders table
     let orders_data = orders_data(&conn).unwrap();
@@ -130,7 +132,7 @@ fn main() {
     let s2_samples = join_table(&s1_samples, &orders_data);
 
     //joining the S2Sample with customer table where c.custkey = o.custkey
-    let s3_samples = s3_join(&s2_samples, customer_data);
+    let s3_samples = s3_join(&s2_samples, &customer_data);
 
     let tables: Vec<String> = select
         .get_table()
@@ -140,7 +142,7 @@ fn main() {
 
     let table_len = tables.len();
 
-    let sample_query = match table_len {
+    let query_result = match table_len {
         1 => {
             let hash_first_sample = s1_sample_hashmap(&s1_samples);
             //taking in the hashmap and where conditions to get the query result as 1 or 0
@@ -169,27 +171,27 @@ fn main() {
     // println!("Sample Query: {:#?}", sample_query);
 
     //calulating the sample ground truth
-    let sample_ground_truth = sample_ground_truth(&sample_query, sample_fraction);
+    let sum: i64 = query_result.iter().sum::<i64>() as i64;
+    let sample_ground_truth = sum as f64 / sample_fraction;
     println!("Sample Ground Truth: {}", sample_ground_truth);
 
     //resampling the query result with replacement
     let (bootstrap_sample, bootstrap_time_taken) =
-        bootstrap_sums(&sample_query, bootstrap_size, sample_fraction);
+        bootstrap_sums(&query_result, bootstrap_size, sample_fraction);
     // println!("Bootstrap Sample: {:#?}", bootstrap_sample);
     println!("Bootstrap Time Taken: {:.2}s", bootstrap_time_taken);
 
-    let mean = calculate_mean(&bootstrap_sample);
-    let bootstrap_std_error = calculate_std_error(&bootstrap_sample, mean);
-    // println!("Mean: {}", mean);
+    let bootstrap_std_error = calculate_variance(&bootstrap_sample, bootstrap_size);
+    //println!("Mean: {}", mean);
     println!("Standard Error: {:.2}", bootstrap_std_error);
 
     // z-score for 95% confidence level
     let z_score = 1.960;
-    let margin_of_error = z_score * bootstrap_std_error;
-    // println!("Margin of Error: {:.2}", margin_of_error);
+    let ci = z_score * bootstrap_std_error;
+    // println!("Margin of Error: {:.2}", ci);
 
-    let lower_bound = sample_ground_truth as f64 - margin_of_error;
-    let upper_bound = sample_ground_truth as f64 + margin_of_error;
+    let lower_bound = sample_ground_truth as f64 - ci;
+    let upper_bound = sample_ground_truth as f64 + ci;
 
     println!("CI: [{:.2}, {:.2}]", lower_bound, upper_bound);
 

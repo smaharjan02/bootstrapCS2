@@ -1,1 +1,1 @@
-select count(*) from lineitem,orders where l_orderkey = o_orderkey and o_totalprice < 150000 and o_totalprice > 85000
+select count(*) from lineitem,orders where l_orderkey = o_orderkey and L_LINENUMBER < 3 and L_LINENUMBER > 0

@@ -22,6 +22,14 @@ CREATE TABLE lineitem (
     FOREIGN KEY (l_partkey, l_suppkey) REFERENCES partsupp(ps_partkey, ps_suppkey)
 );
 
+-- Import data into the lineitem table
+.mode tabs
+.separator '|'
+.import 'data_10g/lineitem.tbl' lineitem
+
+-- Delete the lineitem.tbl file
+!rm 'data_10g/lineitem.tbl'
+
 CREATE TABLE orders (
     o_orderkey INT PRIMARY KEY,
     o_custkey INT,
@@ -35,6 +43,15 @@ CREATE TABLE orders (
     FOREIGN KEY (o_custkey) REFERENCES customer(c_custkey)
 );
 
+
+-- Import data into the orders table
+.mode tabs
+.separator '|'
+.import 'data_10g/order.tbl' orders
+
+-- Delete the order.tbl file
+!rm 'data_10g/order.tbl'
+
 CREATE TABLE customer (
     c_custkey INT PRIMARY KEY,
     c_name VARCHAR(25),
@@ -47,6 +64,14 @@ CREATE TABLE customer (
     FOREIGN KEY (c_nationkey) REFERENCES nation(n_nationkey)
 );
 
+-- Import data into the nation table
+.mode tabs
+.separator '|'
+.import 'data_10g/customer.tbl' customer
+
+-- Delete the nation.tbl file
+!rm 'data_10g/customer.tbl'
+
 CREATE TABLE nation (
     n_nationkey INT PRIMARY KEY,
     n_name CHAR(25),
@@ -55,17 +80,24 @@ CREATE TABLE nation (
     FOREIGN KEY (n_regionkey) REFERENCES region(r_regionkey)
 );
 
+-- Import data into the nation table
+.mode tabs
+.separator '|'
+.import 'data_10g/nation.tbl' nation
+
+-- Delete the nation.tbl file
+!rm 'data_10g/nation.tbl'
+
 CREATE TABLE region (
     r_regionkey INT PRIMARY KEY,
     r_name CHAR(25),
     r_comment VARCHAR(152)
 );
 
+-- Import data into the region table
 .mode tabs
 .separator '|'
-.import 'data_10g/lineitem.tbl' lineitem
-.import 'data_10g/order.tbl' orders
-.import 'data_10g/nation.tbl' nation
 .import 'data_10g/region.tbl' region
-.import 'data_10g/customer.tbl' customer
 
+-- Delete the region.tbl file
+!rm 'data_10g/region.tbl'
