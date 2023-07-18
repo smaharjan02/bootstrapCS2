@@ -1,6 +1,7 @@
 /target
+/src/data_100m
+/src/data_1g
 /src/data_10g
 /src/tpch_100m.db
 /src/tpch_1g.db
 /src/tpch_10g.db
-/src/runn.txt

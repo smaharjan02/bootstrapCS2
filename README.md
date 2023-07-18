@@ -4,6 +4,8 @@ This is a implementation of Scalable Correlated Sampling for Join Query Estimati
 
 # run the code
 
+Make sure to install sqlite and rust inorder to run the code
+
 cd src
 
 # Run Single time
@@ -16,9 +18,10 @@ cargo run -- -d tpch_100m.db -s 0.1 -b 1000
 
 # Run multiple query multiple time
 
-python3 driver.py -df tpch_100m.db -sr 0.1 -ls 10 -bs 1000
+python3 driver.py -df data.db -qr query.sql -sr 0.5 -ls 10 -bs 100
 
 -df = name of the sqlite database
+-qr = file with 10 queries to run
 -sr = sample ratio
 -ls = loop size
 -bs = bootstrap size or number

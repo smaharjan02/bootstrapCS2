@@ -51,9 +51,6 @@ pub fn create_sample(
     conn: &Connection,
     sample_fraction: f64,
 ) -> Result<Vec<S1Sample>, Box<dyn std::error::Error>> {
-    // // Open the SQLite database connection
-    // let conn = Connection::open(db_file)?;
-
     // Define the SQL query to retrieve all rows from the lineitem table
     let query = "SELECT * FROM lineitem;";
 
@@ -76,10 +73,6 @@ pub fn create_sample(
     // Close the database connection
     drop(stmt);
     drop(conn);
-
-    // // Calculate the ground truth of the sample and database
-    // let sample_ground_truth = sample.iter().map(|row| row.l_quantity).sum::<f64>();
-    // let database_ground_truth = all_rows.iter().map(|row| row.l_quantity).sum::<f64>();
 
     Ok(sample)
 }
