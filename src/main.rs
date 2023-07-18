@@ -1,29 +1,30 @@
-#[allow(dead_code)]
 mod bootstrap;
-#[allow(dead_code)]
 mod customer;
-#[allow(dead_code)]
 mod data_sampling;
-#[allow(dead_code)]
+mod nation;
 mod orders;
 #[allow(dead_code)]
 mod parser;
-
+mod region;
 mod samples;
+
+use rayon::prelude::*;
 
 #[allow(unused_imports)]
 use crate::{
     bootstrap::{
         bootstrap_sums, calculate_mean, calculate_variance, random_sample_with_replacement,
     },
-    customer::customer_data,
     data_sampling::{create_sample, groundtruth, s1_sample_hashmap, S1Sample},
-    orders::orders_data,
     parser::{parse_sql_query, Where},
     samples::{
-        get_query_result, join_table, s2_sample_to_hashmap, s3_join, s3_sample_to_hashmap,
-        S2Sample, S3Sample,
+        get_query_result, s2_sample_to_hashmap, s3_sample_to_hashmap, s4_sample_to_hashmap,
+        s5_sample_to_hashmap, S2Sample, S3Sample,
     },
+};
+use crate::{
+    customer::generate_s3_sample, nation::generate_s4_sample, orders::generate_s2_sample,
+    region::generate_s5_sample,
 };
 
 use std::env;
@@ -107,9 +108,9 @@ fn main() {
     // println!("Where Conditions: {:#?}", where_conditions);
 
     //seperating join conditions
-    let (_join_conditions, filtered_conditions) = separate_conditions(where_conditions);
+    let (join_conditions, filtered_conditions) = separate_conditions(where_conditions);
 
-    //println!("Join Condition: {:#?}", join_conditions);
+    // println!("Join Condition: {:#?}", join_conditions);
     // println!("Filtered Conditions: {:#?}", filtered_conditions);
 
     //creating connection to the database
@@ -119,59 +120,56 @@ fn main() {
     let database_ground_truth = groundtruth(&conn, &query).unwrap();
     println!("Database Ground Truth: {}", database_ground_truth);
 
-    //Using SRSWOR to create a sample of the LineItem table (S*1)
-    let s1_samples = create_sample(&conn, sample_fraction).unwrap();
+    let query_result: Vec<i64>;
 
-    //getting all the data from the orders table
-    let orders_data = orders_data(&conn).unwrap();
+    //based on the join condition we generate the responding samples.
+    if join_conditions.iter().any(|condition| {
+        condition.get_left() == "l_orderkey" && condition.get_right() == "o_orderkey"
+    }) {
+        let s1_samples = create_sample(&conn, sample_fraction).unwrap();
+        let s2_samples = generate_s2_sample(&conn, &s1_samples).unwrap();
 
-    //getting all the data from the customer table
-    let customer_data = customer_data(&conn).unwrap();
+        if join_conditions.iter().any(|condition| {
+            condition.get_left() == "o_custkey" && condition.get_right() == "c_custkey"
+        }) {
+            let s3_samples = generate_s3_sample(&conn, &s2_samples).unwrap();
 
-    //Joining lineitem table with orders where l.orderkey = o.orderkey
-    let s2_samples = join_table(&s1_samples, &orders_data);
+            if join_conditions.iter().any(|condition| {
+                condition.get_left() == "c_nationkey" && condition.get_right() == "n_nationkey"
+            }) {
+                let s4_samples = generate_s4_sample(&conn, &s3_samples).unwrap();
 
-    //joining the S2Sample with customer table where c.custkey = o.custkey
-    let s3_samples = s3_join(&s2_samples, &customer_data);
-
-    let tables: Vec<String> = select
-        .get_table()
-        .iter()
-        .flat_map(|table_str| table_str.split(',').map(String::from))
-        .collect();
-
-    let table_len = tables.len();
-
-    let query_result = match table_len {
-        1 => {
-            let hash_first_sample = s1_sample_hashmap(&s1_samples);
-            //taking in the hashmap and where conditions to get the query result as 1 or 0
-            get_query_result(&hash_first_sample, &filtered_conditions)
+                if join_conditions.iter().any(|condition| {
+                    condition.get_left() == "n_regionkey" && condition.get_right() == "r_regionkey"
+                }) {
+                    let s5_samples = generate_s5_sample(&conn, &s4_samples).unwrap();
+                    // Work with s5_samples
+                    let s5_hashmap = s5_sample_to_hashmap(&s5_samples);
+                    query_result = get_query_result(&s5_hashmap, &filtered_conditions);
+                } else {
+                    // Work with s4_samples
+                    let s4_hashmap = s4_sample_to_hashmap(&s4_samples);
+                    query_result = get_query_result(&s4_hashmap, &filtered_conditions);
+                }
+            } else {
+                // Work with s3_samples
+                let s3_hashmap = s3_sample_to_hashmap(&s3_samples);
+                query_result = get_query_result(&s3_hashmap, &filtered_conditions);
+            }
+        } else {
+            // Work with s2_samples
+            let s2_hashmap = s2_sample_to_hashmap(&s2_samples);
+            query_result = get_query_result(&s2_hashmap, &filtered_conditions);
         }
-        2 => {
-            //getting the join sample of S1Sample and S2Sample
-            let hash_first_join = s2_sample_to_hashmap(&s2_samples);
-            //taking in the hashmap and where conditions to get the query result as 1 or 0
-            get_query_result(&hash_first_join, &filtered_conditions)
-        }
-        3 => {
-            //getting the join sample of S3Sample as it has relation from s1sample ,s2sample
-            //converting the join sample to hashmap
-            let hashed_second_join = s3_sample_to_hashmap(&s3_samples);
-            //taking in the hashmap and where conditions to get the query result as 1 or 0
-            get_query_result(&hashed_second_join, &filtered_conditions)
-        }
-        _ => {
-            println!("Unexpected table length.");
-            // Return an empty vector of i64
-            Vec::new()
-        }
-    };
-
-    // println!("Sample Query: {:#?}", sample_query);
+    } else {
+        let s1_samples = create_sample(&conn, sample_fraction).unwrap();
+        // Work with s1_samples
+        let s1_hashmap = s1_sample_hashmap(&s1_samples);
+        query_result = get_query_result(&s1_hashmap, &filtered_conditions);
+    }
 
     //calulating the sample ground truth
-    let sum: i64 = query_result.iter().sum::<i64>() as i64;
+    let sum: i64 = query_result.par_iter().sum();
     let sample_ground_truth = sum as f64 / sample_fraction;
     println!("Sample Ground Truth: {}", sample_ground_truth);
 

@@ -25,10 +25,8 @@ CREATE TABLE lineitem (
 -- Import data into the lineitem table
 .mode tabs
 .separator '|'
-.import 'data_10g/lineitem.tbl' lineitem
+.import 'data_100m/lineitem.tbl' lineitem
 
--- Delete the lineitem.tbl file
-!rm 'data_10g/lineitem.tbl'
 
 CREATE TABLE orders (
     o_orderkey INT PRIMARY KEY,
@@ -47,10 +45,7 @@ CREATE TABLE orders (
 -- Import data into the orders table
 .mode tabs
 .separator '|'
-.import 'data_10g/order.tbl' orders
-
--- Delete the order.tbl file
-!rm 'data_10g/order.tbl'
+.import 'data_100m/order.tbl' orders
 
 CREATE TABLE customer (
     c_custkey INT PRIMARY KEY,
@@ -67,10 +62,8 @@ CREATE TABLE customer (
 -- Import data into the nation table
 .mode tabs
 .separator '|'
-.import 'data_10g/customer.tbl' customer
+.import 'data_100m/customer.tbl' customer
 
--- Delete the nation.tbl file
-!rm 'data_10g/customer.tbl'
 
 CREATE TABLE nation (
     n_nationkey INT PRIMARY KEY,
@@ -83,10 +76,8 @@ CREATE TABLE nation (
 -- Import data into the nation table
 .mode tabs
 .separator '|'
-.import 'data_10g/nation.tbl' nation
+.import 'data_100m/nation.tbl' nation
 
--- Delete the nation.tbl file
-!rm 'data_10g/nation.tbl'
 
 CREATE TABLE region (
     r_regionkey INT PRIMARY KEY,
@@ -97,7 +88,5 @@ CREATE TABLE region (
 -- Import data into the region table
 .mode tabs
 .separator '|'
-.import 'data_10g/region.tbl' region
+.import 'data_100m/region.tbl' region
 
--- Delete the region.tbl file
-!rm 'data_10g/region.tbl'

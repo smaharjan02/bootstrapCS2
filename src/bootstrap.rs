@@ -36,7 +36,7 @@ pub fn bootstrap_sums(data: &[i64], num_resamples: usize, sample_fraction: f64) 
 
 //calculating mean of bootstrapping ground truth sample
 pub fn calculate_mean(bootstrap_sums: &[i64], bootstrap_size: usize) -> f64 {
-    let sum: i64 = bootstrap_sums.iter().sum();
+    let sum: i64 = bootstrap_sums.par_iter().sum();
     sum as f64 / bootstrap_size as f64
 }
 
@@ -44,7 +44,7 @@ pub fn calculate_mean(bootstrap_sums: &[i64], bootstrap_size: usize) -> f64 {
 pub fn calculate_variance(bootstrap_sums: &[i64], bootstrap_size: usize) -> f64 {
     let mean = calculate_mean(bootstrap_sums, bootstrap_size);
     let variance: f64 = bootstrap_sums
-        .iter()
+        .par_iter()
         .map(|&value| {
             let diff = value as f64 - mean;
             diff * diff

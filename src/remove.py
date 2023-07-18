@@ -1,7 +1,7 @@
 import os
 
 # Specify the directory path
-directory_path = "/home/sabin/Desktop/CS2_bootstrap/bootstrap_CS2/src/data_10g"
+directory_path = "/home/smaharjan02/Desktop/CS2_bootstrap/bootstrapCS2/src/data_10g"
 
 # List all files in the directory
 files = os.listdir(directory_path)
