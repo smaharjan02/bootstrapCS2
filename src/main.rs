@@ -1,15 +1,16 @@
 mod bootstrap;
-mod customer;
 mod data_sampling;
-mod nation;
-mod orders;
 #[allow(dead_code)]
 mod parser;
-mod region;
 mod samples;
+mod sampling;
 
 use rayon::prelude::*;
+use rusqlite::Connection;
+use std::env;
+use std::time::Instant;
 
+use crate::sampling::create_sample_tables;
 #[allow(unused_imports)]
 use crate::{
     bootstrap::{
@@ -18,17 +19,11 @@ use crate::{
     data_sampling::{create_sample, groundtruth, s1_sample_hashmap, S1Sample},
     parser::{parse_sql_query, Where},
     samples::{
-        get_query_result, s2_sample_to_hashmap, s3_sample_to_hashmap, s4_sample_to_hashmap,
-        s5_sample_to_hashmap, S2Sample, S3Sample,
+        fetch_s2_sample, fetch_s3_sample, fetch_s4_sample, fetch_s5_sample, get_query_result,
+        s2_sample_to_hashmap, s3_sample_to_hashmap, s4_sample_to_hashmap, s5_sample_to_hashmap,
+        S2Sample, S3Sample,
     },
 };
-use crate::{
-    customer::generate_s3_sample, nation::generate_s4_sample, orders::generate_s2_sample,
-    region::generate_s5_sample,
-};
-
-use std::env;
-use std::time::Instant;
 
 //making the connection to the database
 fn db_connection(db_file: &str) -> Result<rusqlite::Connection, rusqlite::Error> {
@@ -108,65 +103,24 @@ fn main() {
     // println!("Where Conditions: {:#?}", where_conditions);
 
     //seperating join conditions
-    let (join_conditions, filtered_conditions) = separate_conditions(where_conditions);
+    let (join_conditions, selection_conditions) = separate_conditions(where_conditions);
 
-    // println!("Join Condition: {:#?}", join_conditions);
-    // println!("Filtered Conditions: {:#?}", filtered_conditions);
+    println!("Join Condition: {:#?}", join_conditions);
+    println!("Selection Conditions: {:#?}", selection_conditions);
 
-    //creating connection to the database
+    // Connect to SQLite database (or create one if it doesn't exist)
     let conn = db_connection(db_file).unwrap();
 
+    // Call the function to create the sample tables
+    create_sample_tables(&conn, sample_fraction).unwrap();
     //running the query on the database to get the groundtruth
     let database_ground_truth = groundtruth(&conn, &query).unwrap();
     println!("Database Ground Truth: {}", database_ground_truth);
 
-    let query_result: Vec<i64>;
+    let query_result: Vec<i64> =
+        query_result(&conn, join_conditions, selection_conditions).unwrap();
 
-    //based on the join condition we generate the responding samples.
-    if join_conditions.iter().any(|condition| {
-        condition.get_left() == "l_orderkey" && condition.get_right() == "o_orderkey"
-    }) {
-        let s1_samples = create_sample(&conn, sample_fraction).unwrap();
-        let s2_samples = generate_s2_sample(&conn, &s1_samples).unwrap();
-
-        if join_conditions.iter().any(|condition| {
-            condition.get_left() == "o_custkey" && condition.get_right() == "c_custkey"
-        }) {
-            let s3_samples = generate_s3_sample(&conn, &s2_samples).unwrap();
-
-            if join_conditions.iter().any(|condition| {
-                condition.get_left() == "c_nationkey" && condition.get_right() == "n_nationkey"
-            }) {
-                let s4_samples = generate_s4_sample(&conn, &s3_samples).unwrap();
-
-                if join_conditions.iter().any(|condition| {
-                    condition.get_left() == "n_regionkey" && condition.get_right() == "r_regionkey"
-                }) {
-                    let s5_samples = generate_s5_sample(&conn, &s4_samples).unwrap();
-                    // Work with s5_samples
-                    let s5_hashmap = s5_sample_to_hashmap(&s5_samples);
-                    query_result = get_query_result(&s5_hashmap, &filtered_conditions);
-                } else {
-                    // Work with s4_samples
-                    let s4_hashmap = s4_sample_to_hashmap(&s4_samples);
-                    query_result = get_query_result(&s4_hashmap, &filtered_conditions);
-                }
-            } else {
-                // Work with s3_samples
-                let s3_hashmap = s3_sample_to_hashmap(&s3_samples);
-                query_result = get_query_result(&s3_hashmap, &filtered_conditions);
-            }
-        } else {
-            // Work with s2_samples
-            let s2_hashmap = s2_sample_to_hashmap(&s2_samples);
-            query_result = get_query_result(&s2_hashmap, &filtered_conditions);
-        }
-    } else {
-        let s1_samples = create_sample(&conn, sample_fraction).unwrap();
-        // Work with s1_samples
-        let s1_hashmap = s1_sample_hashmap(&s1_samples);
-        query_result = get_query_result(&s1_hashmap, &filtered_conditions);
-    }
+    // println!("Query result {:#?}", query_result);
 
     //calulating the sample ground truth
     let sum: i64 = query_result.par_iter().sum();
@@ -206,9 +160,80 @@ fn main() {
             database_ground_truth
         )
     }
+
     // End timing
     let duration = start.elapsed().as_secs_f64();
 
     // Print the elapsed time in seconds
     println!("Execution time: {:.2}s", duration);
+}
+
+//Selectiong sample based on join condition
+fn query_result(
+    conn: &Connection,
+    join_conditions: Vec<Where>,
+    selection_conditions: Vec<Where>,
+) -> Result<Vec<i64>, rusqlite::Error> {
+    let mut join_count = 0;
+
+    if join_conditions.iter().any(|condition| {
+        condition.get_left() == "l_orderkey"
+            && condition.get_right() == "o_orderkey"
+            && condition.get_operator() == "="
+    }) {
+        join_count += 1;
+    }
+
+    if join_conditions.iter().any(|condition| {
+        condition.get_left() == "o_custkey"
+            && condition.get_right() == "c_custkey"
+            && condition.get_operator() == "="
+    }) {
+        join_count += 1;
+    }
+
+    if join_conditions.iter().any(|condition| {
+        condition.get_left() == "c_nationkey"
+            && condition.get_right() == "n_nationkey"
+            && condition.get_operator() == "="
+    }) {
+        join_count += 1;
+    }
+
+    if join_conditions.iter().any(|condition| {
+        condition.get_left() == "n_regionkey"
+            && condition.get_right() == "r_regionkey"
+            && condition.get_operator() == "="
+    }) {
+        join_count += 1;
+    }
+
+    let result = match join_count {
+        1 => {
+            let s2_sample = fetch_s2_sample(&conn)?;
+            let s2_hashmap = s2_sample_to_hashmap(&s2_sample);
+            get_query_result(&s2_hashmap, &selection_conditions)
+        }
+        2 => {
+            let s3_sample = fetch_s3_sample(&conn)?;
+            let s3_hashmap = s3_sample_to_hashmap(&s3_sample);
+            get_query_result(&s3_hashmap, &selection_conditions)
+        }
+        3 => {
+            let s4_sample = fetch_s4_sample(&conn)?;
+            let s4_hashmap = s4_sample_to_hashmap(&s4_sample);
+            get_query_result(&s4_hashmap, &selection_conditions)
+        }
+        4 => {
+            let s5_sample = fetch_s5_sample(&conn)?;
+            let s5_hashmap = s5_sample_to_hashmap(&s5_sample);
+            get_query_result(&s5_hashmap, &selection_conditions)
+        }
+        _ => {
+            println!("No matching join conditions found.");
+            Vec::new()
+        }
+    };
+
+    Ok(result)
 }

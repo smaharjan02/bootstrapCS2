@@ -1,14 +1,22 @@
 use crate::parser::Where;
+use rusqlite::{Connection, Result, Row};
 use std::collections::HashMap;
 use std::time::Instant;
 
+macro_rules! insert_to_hashmap {
+    ($hashmap:expr, $sample:expr, $($field:ident),+) => {
+        $(
+            $hashmap.insert(stringify!($field).to_string(), $sample.$field.to_string());
+        )+
+    };
+}
+
+//S2_sample data
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct S2Sample {
-    //Join key
-    pub o_orderkey: i32,
-
     //LineItem fields
+    pub l_orderkey: i32,
     pub l_partkey: i32,
     pub l_suppkey: i32,
     pub l_linenumber: i32,
@@ -26,6 +34,7 @@ pub struct S2Sample {
     pub l_comment: String,
 
     //Orders fields
+    pub o_orderkey: i32,
     pub o_custkey: i32,
     pub o_orderstatus: String,
     pub o_totalprice: f64,
@@ -36,50 +45,92 @@ pub struct S2Sample {
     pub o_comment: String,
 }
 
+impl S2Sample {
+    fn from_row(row: &Row) -> Result<Self> {
+        Ok(S2Sample {
+            l_orderkey: row.get(0)?,
+            l_partkey: row.get(1)?,
+            l_suppkey: row.get(2)?,
+            l_linenumber: row.get(3)?,
+            l_quantity: row.get(4)?,
+            l_extendedprice: row.get(5)?,
+            l_discount: row.get(6)?,
+            l_tax: row.get(7)?,
+            l_returnflag: row.get(8)?,
+            l_linestatus: row.get(9)?,
+            l_shipdate: row.get(10)?,
+            l_commitdate: row.get(11)?,
+            l_receiptdate: row.get(12)?,
+            l_shipinstruct: row.get(13)?,
+            l_shipmode: row.get(14)?,
+            l_comment: row.get(15)?,
+            o_orderkey: row.get(16)?,
+            o_custkey: row.get(17)?,
+            o_orderstatus: row.get(18)?,
+            o_totalprice: row.get(19)?,
+            o_orderdate: row.get(20)?,
+            o_orderpriority: row.get(21)?,
+            o_clerk: row.get(22)?,
+            o_shippriority: row.get(23)?,
+            o_comment: row.get(24)?,
+        })
+    }
+}
+
+//fetch the data from database
+pub fn fetch_s2_sample(conn: &Connection) -> Result<Vec<S2Sample>> {
+    let mut stmt = conn.prepare("SELECT * FROM s2_sample")?;
+    let s2_samples_iter = stmt.query_map([], S2Sample::from_row)?;
+
+    let mut s2_samples = Vec::new();
+    for sample in s2_samples_iter {
+        s2_samples.push(sample?);
+    }
+
+    Ok(s2_samples)
+}
+
+//convert struct into hashmap for easier search
 pub fn s2_sample_to_hashmap(samples: &[S2Sample]) -> Vec<HashMap<String, String>> {
-    let start_time = Instant::now(); // Start measuring time
+    let start_time = Instant::now();
+
     let hashmaps = samples
         .iter()
         .map(|sample| {
             let mut hashmap = HashMap::new();
-            hashmap.insert("o_orderkey".to_string(), sample.o_orderkey.to_string());
-            hashmap.insert("l_partkey".to_string(), sample.l_partkey.to_string());
-            hashmap.insert("l_suppkey".to_string(), sample.l_suppkey.to_string());
-            hashmap.insert("l_linenumber".to_string(), sample.l_linenumber.to_string());
-            hashmap.insert("l_quantity".to_string(), sample.l_quantity.to_string());
-            hashmap.insert(
-                "l_extendedprice".to_string(),
-                sample.l_extendedprice.to_string(),
+            insert_to_hashmap!(
+                hashmap,
+                sample,
+                o_orderkey,
+                l_partkey,
+                l_suppkey,
+                l_linenumber,
+                l_quantity,
+                l_extendedprice,
+                l_discount,
+                l_tax,
+                l_returnflag,
+                l_linestatus,
+                l_shipdate,
+                l_commitdate,
+                l_receiptdate,
+                l_shipinstruct,
+                l_shipmode,
+                l_comment,
+                o_custkey,
+                o_orderstatus,
+                o_totalprice,
+                o_orderdate,
+                o_orderpriority,
+                o_clerk,
+                o_shippriority,
+                o_comment
             );
-            hashmap.insert("l_discount".to_string(), sample.l_discount.to_string());
-            hashmap.insert("l_tax".to_string(), sample.l_tax.to_string());
-            hashmap.insert("l_returnflag".to_string(), sample.l_returnflag.clone());
-            hashmap.insert("l_linestatus".to_string(), sample.l_linestatus.clone());
-            hashmap.insert("l_shipdate".to_string(), sample.l_shipdate.clone());
-            hashmap.insert("l_commitdate".to_string(), sample.l_commitdate.clone());
-            hashmap.insert("l_receiptdate".to_string(), sample.l_receiptdate.clone());
-            hashmap.insert("l_shipinstruct".to_string(), sample.l_shipinstruct.clone());
-            hashmap.insert("l_shipmode".to_string(), sample.l_shipmode.clone());
-            hashmap.insert("l_comment".to_string(), sample.l_comment.clone());
-            hashmap.insert("o_custkey".to_string(), sample.o_custkey.to_string());
-            hashmap.insert("o_orderstatus".to_string(), sample.o_orderstatus.clone());
-            hashmap.insert("o_totalprice".to_string(), sample.o_totalprice.to_string());
-            hashmap.insert("o_orderdate".to_string(), sample.o_orderdate.clone());
-            hashmap.insert(
-                "o_orderpriority".to_string(),
-                sample.o_orderpriority.clone(),
-            );
-            hashmap.insert("o_clerk".to_string(), sample.o_clerk.clone());
-            hashmap.insert(
-                "o_shippriority".to_string(),
-                sample.o_shippriority.to_string(),
-            );
-            hashmap.insert("o_comment".to_string(), sample.o_comment.clone());
             hashmap
         })
         .collect();
 
-    let end_time = Instant::now(); // Stop measuring time
+    let end_time = Instant::now();
     let _execution_time = end_time - start_time;
 
     // println!(
@@ -90,14 +141,12 @@ pub fn s2_sample_to_hashmap(samples: &[S2Sample]) -> Vec<HashMap<String, String>
     hashmaps
 }
 
+//S3_sample table data
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct S3Sample {
-    //Join key
-    pub c_custkey: i32,
-    pub o_orderkey: i32,
-
     //LineItem fields
+    pub l_orderkey: i32,
     pub l_partkey: i32,
     pub l_suppkey: i32,
     pub l_linenumber: i32,
@@ -115,6 +164,7 @@ pub struct S3Sample {
     pub l_comment: String,
 
     //Orders fields
+    pub o_orderkey: i32,
     pub o_orderstatus: String,
     pub o_totalprice: f64,
     pub o_orderdate: String,
@@ -124,6 +174,7 @@ pub struct S3Sample {
     pub o_comment: String,
 
     //Customer fields
+    pub c_custkey: i32,
     pub c_name: String,
     pub c_address: String,
     pub c_nationkey: i32,
@@ -133,78 +184,108 @@ pub struct S3Sample {
     pub c_comment: String,
 }
 
-// //function to create a hashmap of s3sample so that we can filter based on the selection condition
-pub fn s3_sample_to_hashmap(samples: &[S3Sample]) -> Vec<HashMap<String, String>> {
-    let start_time = Instant::now(); // Start measuring time
-
-    let mut hashmaps = Vec::new();
-
-    for sample in samples {
-        let mut hashmap = HashMap::new();
-
-        hashmap.insert("c_custkey".to_string(), sample.c_custkey.to_string());
-        hashmap.insert("o_orderkey".to_string(), sample.o_orderkey.to_string());
-        hashmap.insert("l_partkey".to_string(), sample.l_partkey.to_string());
-        hashmap.insert("l_suppkey".to_string(), sample.l_suppkey.to_string());
-        hashmap.insert("l_linenumber".to_string(), sample.l_linenumber.to_string());
-        hashmap.insert("l_quantity".to_string(), sample.l_quantity.to_string());
-        hashmap.insert(
-            "l_extendedprice".to_string(),
-            sample.l_extendedprice.to_string(),
-        );
-        hashmap.insert("l_discount".to_string(), sample.l_discount.to_string());
-        hashmap.insert("l_tax".to_string(), sample.l_tax.to_string());
-        hashmap.insert("l_returnflag".to_string(), sample.l_returnflag.clone());
-        hashmap.insert("l_linestatus".to_string(), sample.l_linestatus.clone());
-        hashmap.insert("l_shipdate".to_string(), sample.l_shipdate.clone());
-        hashmap.insert("l_commitdate".to_string(), sample.l_commitdate.clone());
-        hashmap.insert("l_receiptdate".to_string(), sample.l_receiptdate.clone());
-        hashmap.insert("l_shipinstruct".to_string(), sample.l_shipinstruct.clone());
-        hashmap.insert("l_shipmode".to_string(), sample.l_shipmode.clone());
-        hashmap.insert("l_comment".to_string(), sample.l_comment.clone());
-        hashmap.insert("o_orderstatus".to_string(), sample.o_orderstatus.clone());
-        hashmap.insert("o_totalprice".to_string(), sample.o_totalprice.to_string());
-        hashmap.insert("o_orderdate".to_string(), sample.o_orderdate.clone());
-        hashmap.insert(
-            "o_orderpriority".to_string(),
-            sample.o_orderpriority.clone(),
-        );
-        hashmap.insert("o_clerk".to_string(), sample.o_clerk.clone());
-        hashmap.insert(
-            "o_shippriority".to_string(),
-            sample.o_shippriority.to_string(),
-        );
-        hashmap.insert("o_comment".to_string(), sample.o_comment.clone());
-        hashmap.insert("c_name".to_string(), sample.c_name.clone());
-        hashmap.insert("c_address".to_string(), sample.c_address.clone());
-        hashmap.insert("c_nationkey".to_string(), sample.c_nationkey.to_string());
-        hashmap.insert("c_phone".to_string(), sample.c_phone.clone());
-        hashmap.insert("c_acctbal".to_string(), sample.c_acctbal.to_string());
-        hashmap.insert("c_mktsegment".to_string(), sample.c_mktsegment.clone());
-        hashmap.insert("c_comment".to_string(), sample.c_comment.clone());
-
-        hashmaps.push(hashmap);
+impl S3Sample {
+    fn from_row(row: &Row) -> Result<Self> {
+        Ok(S3Sample {
+            l_orderkey: row.get(0)?,
+            l_partkey: row.get(1)?,
+            l_suppkey: row.get(2)?,
+            l_linenumber: row.get(3)?,
+            l_quantity: row.get(4)?,
+            l_extendedprice: row.get(5)?,
+            l_discount: row.get(6)?,
+            l_tax: row.get(7)?,
+            l_returnflag: row.get(8)?,
+            l_linestatus: row.get(9)?,
+            l_shipdate: row.get(10)?,
+            l_commitdate: row.get(11)?,
+            l_receiptdate: row.get(12)?,
+            l_shipinstruct: row.get(13)?,
+            l_shipmode: row.get(14)?,
+            l_comment: row.get(15)?,
+            o_orderkey: row.get(16)?,
+            o_orderstatus: row.get(18)?,
+            o_totalprice: row.get(19)?,
+            o_orderdate: row.get(20)?,
+            o_orderpriority: row.get(21)?,
+            o_clerk: row.get(22)?,
+            o_shippriority: row.get(23)?,
+            o_comment: row.get(24)?,
+            c_custkey: row.get(25)?,
+            c_name: row.get(26)?,
+            c_address: row.get(27)?,
+            c_nationkey: row.get(28)?,
+            c_phone: row.get(29)?,
+            c_acctbal: row.get(30)?,
+            c_mktsegment: row.get(31)?,
+            c_comment: row.get(32)?,
+        })
     }
-    let end_time = Instant::now(); // Stop measuring time
-    let _execution_time = end_time - start_time;
-
-    // println!(
-    //     "Execution time s3_sample_to_hashmap: {:.3}",
-    //     execution_time.as_secs_f64()
-    // );
-
-    hashmaps
 }
 
+//fetch sample data from database
+pub fn fetch_s3_sample(conn: &Connection) -> Result<Vec<S3Sample>> {
+    let mut stmt = conn.prepare("SELECT * FROM s3_sample")?;
+    let s3_samples_iter = stmt.query_map([], S3Sample::from_row)?;
+
+    let mut s3_samples = Vec::new();
+    for sample in s3_samples_iter {
+        s3_samples.push(sample?);
+    }
+
+    Ok(s3_samples)
+}
+
+// //function to create a hashmap of s3sample so that we can filter based on the selection condition
+pub fn s3_sample_to_hashmap(samples: &[S3Sample]) -> Vec<HashMap<String, String>> {
+    samples
+        .iter()
+        .map(|sample| {
+            let mut hashmap = HashMap::new();
+            insert_to_hashmap!(
+                hashmap,
+                sample,
+                c_custkey,
+                l_orderkey,
+                l_partkey,
+                l_suppkey,
+                l_linenumber,
+                l_quantity,
+                l_extendedprice,
+                l_discount,
+                l_tax,
+                l_returnflag,
+                l_linestatus,
+                l_shipdate,
+                l_commitdate,
+                l_receiptdate,
+                l_shipinstruct,
+                l_shipmode,
+                l_comment,
+                o_orderstatus,
+                o_totalprice,
+                o_orderdate,
+                o_orderpriority,
+                o_clerk,
+                o_shippriority,
+                o_comment,
+                c_name,
+                c_address,
+                c_nationkey,
+                c_phone,
+                c_acctbal,
+                c_mktsegment,
+                c_comment
+            );
+            hashmap
+        })
+        .collect()
+}
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct S4Sample {
-    //Join key
-    pub n_nationkey: i32,
-    pub c_custkey: i32,
-    pub o_orderkey: i32,
-
     //LineItem fields
+    pub l_orderkey: i32,
     pub l_partkey: i32,
     pub l_suppkey: i32,
     pub l_linenumber: i32,
@@ -222,6 +303,7 @@ pub struct S4Sample {
     pub l_comment: String,
 
     //Orders fields
+    pub o_orderkey: i32,
     pub o_orderstatus: String,
     pub o_totalprice: f64,
     pub o_orderdate: String,
@@ -231,6 +313,7 @@ pub struct S4Sample {
     pub o_comment: String,
 
     //Customer fields
+    pub c_custkey: i32,
     pub c_name: String,
     pub c_address: String,
     pub c_nationkey: i32,
@@ -240,67 +323,122 @@ pub struct S4Sample {
     pub c_comment: String,
 
     //Nation fileds
+    pub n_nationkey: i32,
     pub n_name: String,
     pub n_regionkey: i32,
     pub n_comment: String,
 }
 
+//get all the s4sample data from the sqlite database
+impl S4Sample {
+    fn from_row(row: &Row) -> Result<Self> {
+        Ok(S4Sample {
+            l_orderkey: row.get(0)?,
+            l_partkey: row.get(1)?,
+            l_suppkey: row.get(2)?,
+            l_linenumber: row.get(3)?,
+            l_quantity: row.get(4)?,
+            l_extendedprice: row.get(5)?,
+            l_discount: row.get(6)?,
+            l_tax: row.get(7)?,
+            l_returnflag: row.get(8)?,
+            l_linestatus: row.get(9)?,
+            l_shipdate: row.get(10)?,
+            l_commitdate: row.get(11)?,
+            l_receiptdate: row.get(12)?,
+            l_shipinstruct: row.get(13)?,
+            l_shipmode: row.get(14)?,
+            l_comment: row.get(15)?,
+            o_orderkey: row.get(16)?,
+            o_orderstatus: row.get(18)?,
+            o_totalprice: row.get(19)?,
+            o_orderdate: row.get(20)?,
+            o_orderpriority: row.get(21)?,
+            o_clerk: row.get(22)?,
+            o_shippriority: row.get(23)?,
+            o_comment: row.get(24)?,
+            c_custkey: row.get(25)?,
+            c_name: row.get(26)?,
+            c_address: row.get(27)?,
+            c_nationkey: row.get(28)?,
+            c_phone: row.get(29)?,
+            c_acctbal: row.get(30)?,
+            c_mktsegment: row.get(31)?,
+            c_comment: row.get(32)?,
+            n_nationkey: row.get(33)?,
+            n_name: row.get(34)?,
+            n_regionkey: row.get(35)?,
+            n_comment: row.get(36)?,
+        })
+    }
+}
+
+//fetch sample data from database
+pub fn fetch_s4_sample(conn: &Connection) -> Result<Vec<S4Sample>> {
+    let mut stmt = conn.prepare("SELECT * FROM s4_sample")?;
+    let s4_samples_iter = stmt.query_map([], S4Sample::from_row)?;
+
+    let mut s4_samples = Vec::new();
+    for sample in s4_samples_iter {
+        s4_samples.push(sample?);
+    }
+
+    Ok(s4_samples)
+}
+
 //s4sample to hashmap for faster searching
 pub fn s4_sample_to_hashmap(samples: &[S4Sample]) -> Vec<HashMap<String, String>> {
-    let start_time = Instant::now(); // Start measuring time
+    let start_time = Instant::now();
 
-    let mut hashmaps = Vec::new();
+    let hashmaps = samples
+        .iter()
+        .map(|sample| {
+            let mut hashmap = HashMap::new();
+            insert_to_hashmap!(
+                hashmap,
+                sample,
+                l_orderkey,
+                l_partkey,
+                l_suppkey,
+                l_linenumber,
+                l_quantity,
+                l_extendedprice,
+                l_discount,
+                l_tax,
+                l_returnflag,
+                l_linestatus,
+                l_shipdate,
+                l_commitdate,
+                l_receiptdate,
+                l_shipinstruct,
+                l_shipmode,
+                l_comment,
+                o_orderkey,
+                o_orderstatus,
+                o_totalprice,
+                o_orderdate,
+                o_orderpriority,
+                o_clerk,
+                o_shippriority,
+                o_comment,
+                c_custkey,
+                c_name,
+                c_address,
+                c_nationkey,
+                c_phone,
+                c_acctbal,
+                c_mktsegment,
+                c_comment,
+                n_nationkey,
+                n_name,
+                n_regionkey,
+                n_comment
+            );
+            hashmap
+        })
+        .collect();
 
-    for sample in samples {
-        let mut hashmap = HashMap::new();
-        hashmap.insert("n_nationkey".to_string(), sample.n_nationkey.to_string());
-        hashmap.insert("c_custkey".to_string(), sample.c_custkey.to_string());
-        hashmap.insert("o_orderkey".to_string(), sample.o_orderkey.to_string());
-        hashmap.insert("l_partkey".to_string(), sample.l_partkey.to_string());
-        hashmap.insert("l_suppkey".to_string(), sample.l_suppkey.to_string());
-        hashmap.insert("l_linenumber".to_string(), sample.l_linenumber.to_string());
-        hashmap.insert("l_quantity".to_string(), sample.l_quantity.to_string());
-        hashmap.insert(
-            "l_extendedprice".to_string(),
-            sample.l_extendedprice.to_string(),
-        );
-        hashmap.insert("l_discount".to_string(), sample.l_discount.to_string());
-        hashmap.insert("l_tax".to_string(), sample.l_tax.to_string());
-        hashmap.insert("l_returnflag".to_string(), sample.l_returnflag.clone());
-        hashmap.insert("l_linestatus".to_string(), sample.l_linestatus.clone());
-        hashmap.insert("l_shipdate".to_string(), sample.l_shipdate.clone());
-        hashmap.insert("l_commitdate".to_string(), sample.l_commitdate.clone());
-        hashmap.insert("l_receiptdate".to_string(), sample.l_receiptdate.clone());
-        hashmap.insert("l_shipinstruct".to_string(), sample.l_shipinstruct.clone());
-        hashmap.insert("l_shipmode".to_string(), sample.l_shipmode.clone());
-        hashmap.insert("l_comment".to_string(), sample.l_comment.clone());
-        hashmap.insert("o_orderstatus".to_string(), sample.o_orderstatus.clone());
-        hashmap.insert("o_totalprice".to_string(), sample.o_totalprice.to_string());
-        hashmap.insert("o_orderdate".to_string(), sample.o_orderdate.clone());
-        hashmap.insert(
-            "o_orderpriority".to_string(),
-            sample.o_orderpriority.clone(),
-        );
-        hashmap.insert("o_clerk".to_string(), sample.o_clerk.clone());
-        hashmap.insert(
-            "o_shippriority".to_string(),
-            sample.o_shippriority.to_string(),
-        );
-        hashmap.insert("o_comment".to_string(), sample.o_comment.clone());
-        hashmap.insert("c_name".to_string(), sample.c_name.clone());
-        hashmap.insert("c_address".to_string(), sample.c_address.clone());
-        hashmap.insert("c_nationkey".to_string(), sample.c_nationkey.to_string());
-        hashmap.insert("c_phone".to_string(), sample.c_phone.clone());
-        hashmap.insert("c_acctbal".to_string(), sample.c_acctbal.to_string());
-        hashmap.insert("c_mktsegment".to_string(), sample.c_mktsegment.clone());
-        hashmap.insert("c_comment".to_string(), sample.c_comment.clone());
-
-        hashmap.insert("n_name".to_string(), sample.n_name.clone());
-        hashmap.insert("n_regionkey".to_string(), sample.n_regionkey.to_string());
-        hashmap.insert("n_comment".to_string(), sample.n_comment.clone());
-        hashmaps.push(hashmap);
-    }
-    let end_time = Instant::now(); // Stop measuring time
+    let end_time = Instant::now();
     let _execution_time = end_time - start_time;
 
     // println!(
@@ -314,13 +452,8 @@ pub fn s4_sample_to_hashmap(samples: &[S4Sample]) -> Vec<HashMap<String, String>
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct S5Sample {
-    //Join key
-    pub r_regionkey: i32,
-    pub n_nationkey: i32,
-    pub c_custkey: i32,
-    pub o_orderkey: i32,
-
     //LineItem fields
+    pub l_orderkey: i32,
     pub l_partkey: i32,
     pub l_suppkey: i32,
     pub l_linenumber: i32,
@@ -338,6 +471,7 @@ pub struct S5Sample {
     pub l_comment: String,
 
     //Orders fields
+    pub o_orderkey: i32,
     pub o_orderstatus: String,
     pub o_totalprice: f64,
     pub o_orderdate: String,
@@ -347,6 +481,7 @@ pub struct S5Sample {
     pub o_comment: String,
 
     //Customer fields
+    pub c_custkey: i32,
     pub c_name: String,
     pub c_address: String,
     pub c_nationkey: i32,
@@ -356,72 +491,131 @@ pub struct S5Sample {
     pub c_comment: String,
 
     //Nation fileds
+    pub n_nationkey: i32,
     pub n_name: String,
     pub n_regionkey: i32,
     pub n_comment: String,
-
     //Region Fields
+    pub r_regionkey: i32,
     pub r_name: String,
     pub r_comment: String,
 }
 
+impl S5Sample {
+    fn from_row(row: &Row) -> Result<Self> {
+        Ok(S5Sample {
+            l_orderkey: row.get(0)?,
+            l_partkey: row.get(1)?,
+            l_suppkey: row.get(2)?,
+            l_linenumber: row.get(3)?,
+            l_quantity: row.get(4)?,
+            l_extendedprice: row.get(5)?,
+            l_discount: row.get(6)?,
+            l_tax: row.get(7)?,
+            l_returnflag: row.get(8)?,
+            l_linestatus: row.get(9)?,
+            l_shipdate: row.get(10)?,
+            l_commitdate: row.get(11)?,
+            l_receiptdate: row.get(12)?,
+            l_shipinstruct: row.get(13)?,
+            l_shipmode: row.get(14)?,
+            l_comment: row.get(15)?,
+            o_orderkey: row.get(16)?,
+            o_orderstatus: row.get(18)?,
+            o_totalprice: row.get(19)?,
+            o_orderdate: row.get(20)?,
+            o_orderpriority: row.get(21)?,
+            o_clerk: row.get(22)?,
+            o_shippriority: row.get(23)?,
+            o_comment: row.get(24)?,
+            c_custkey: row.get(25)?,
+            c_name: row.get(26)?,
+            c_address: row.get(27)?,
+            c_nationkey: row.get(28)?,
+            c_phone: row.get(29)?,
+            c_acctbal: row.get(30)?,
+            c_mktsegment: row.get(31)?,
+            c_comment: row.get(32)?,
+            n_nationkey: row.get(33)?,
+            n_name: row.get(34)?,
+            n_regionkey: row.get(35)?,
+            n_comment: row.get(36)?,
+            r_regionkey: row.get(37)?,
+            r_name: row.get(38)?,
+            r_comment: row.get(39)?,
+        })
+    }
+}
+
+//fetch sample data from database
+pub fn fetch_s5_sample(conn: &Connection) -> Result<Vec<S5Sample>> {
+    let mut stmt = conn.prepare("SELECT * FROM s5_sample")?;
+    let s5_samples_iter = stmt.query_map([], S5Sample::from_row)?;
+
+    let mut s5_samples = Vec::new();
+    for sample in s5_samples_iter {
+        s5_samples.push(sample?);
+    }
+
+    Ok(s5_samples)
+}
+
 //s5sample to hashmap for faster searching
 pub fn s5_sample_to_hashmap(samples: &[S5Sample]) -> Vec<HashMap<String, String>> {
-    let start_time = Instant::now(); // Start measuring time
+    let start_time = Instant::now();
 
-    let mut hashmaps = Vec::new();
+    let hashmaps = samples
+        .iter()
+        .map(|sample| {
+            let mut hashmap = HashMap::new();
+            insert_to_hashmap!(
+                hashmap,
+                sample,
+                l_orderkey,
+                l_partkey,
+                l_suppkey,
+                l_linenumber,
+                l_quantity,
+                l_extendedprice,
+                l_discount,
+                l_tax,
+                l_returnflag,
+                l_linestatus,
+                l_shipdate,
+                l_commitdate,
+                l_receiptdate,
+                l_shipinstruct,
+                l_shipmode,
+                l_comment,
+                o_orderkey,
+                o_orderstatus,
+                o_totalprice,
+                o_orderdate,
+                o_orderpriority,
+                o_clerk,
+                o_shippriority,
+                o_comment,
+                c_custkey,
+                c_name,
+                c_address,
+                c_nationkey,
+                c_phone,
+                c_acctbal,
+                c_mktsegment,
+                c_comment,
+                n_nationkey,
+                n_name,
+                n_regionkey,
+                n_comment,
+                r_regionkey,
+                r_name,
+                r_comment
+            );
+            hashmap
+        })
+        .collect();
 
-    for sample in samples {
-        let mut hashmap = HashMap::new();
-        hashmap.insert("r_regionkey".to_string(), sample.r_regionkey.to_string());
-        hashmap.insert("n_nationkey".to_string(), sample.n_nationkey.to_string());
-        hashmap.insert("c_custkey".to_string(), sample.c_custkey.to_string());
-        hashmap.insert("o_orderkey".to_string(), sample.o_orderkey.to_string());
-        hashmap.insert("l_partkey".to_string(), sample.l_partkey.to_string());
-        hashmap.insert("l_suppkey".to_string(), sample.l_suppkey.to_string());
-        hashmap.insert("l_linenumber".to_string(), sample.l_linenumber.to_string());
-        hashmap.insert("l_quantity".to_string(), sample.l_quantity.to_string());
-        hashmap.insert(
-            "l_extendedprice".to_string(),
-            sample.l_extendedprice.to_string(),
-        );
-        hashmap.insert("l_discount".to_string(), sample.l_discount.to_string());
-        hashmap.insert("l_tax".to_string(), sample.l_tax.to_string());
-        hashmap.insert("l_returnflag".to_string(), sample.l_returnflag.clone());
-        hashmap.insert("l_linestatus".to_string(), sample.l_linestatus.clone());
-        hashmap.insert("l_shipdate".to_string(), sample.l_shipdate.clone());
-        hashmap.insert("l_commitdate".to_string(), sample.l_commitdate.clone());
-        hashmap.insert("l_receiptdate".to_string(), sample.l_receiptdate.clone());
-        hashmap.insert("l_shipinstruct".to_string(), sample.l_shipinstruct.clone());
-        hashmap.insert("l_shipmode".to_string(), sample.l_shipmode.clone());
-        hashmap.insert("l_comment".to_string(), sample.l_comment.clone());
-        hashmap.insert("o_orderstatus".to_string(), sample.o_orderstatus.clone());
-        hashmap.insert("o_totalprice".to_string(), sample.o_totalprice.to_string());
-        hashmap.insert("o_orderdate".to_string(), sample.o_orderdate.clone());
-        hashmap.insert(
-            "o_orderpriority".to_string(),
-            sample.o_orderpriority.clone(),
-        );
-        hashmap.insert("o_clerk".to_string(), sample.o_clerk.clone());
-        hashmap.insert(
-            "o_shippriority".to_string(),
-            sample.o_shippriority.to_string(),
-        );
-        hashmap.insert("o_comment".to_string(), sample.o_comment.clone());
-        hashmap.insert("c_name".to_string(), sample.c_name.clone());
-        hashmap.insert("c_address".to_string(), sample.c_address.clone());
-        hashmap.insert("c_nationkey".to_string(), sample.c_nationkey.to_string());
-        hashmap.insert("c_phone".to_string(), sample.c_phone.clone());
-        hashmap.insert("c_acctbal".to_string(), sample.c_acctbal.to_string());
-        hashmap.insert("c_mktsegment".to_string(), sample.c_mktsegment.clone());
-        hashmap.insert("c_comment".to_string(), sample.c_comment.clone());
-
-        hashmap.insert("n_name".to_string(), sample.n_name.clone());
-        hashmap.insert("n_regionkey".to_string(), sample.n_regionkey.to_string());
-        hashmap.insert("n_comment".to_string(), sample.n_comment.clone());
-        hashmaps.push(hashmap);
-    }
-    let end_time = Instant::now(); // Stop measuring time
+    let end_time = Instant::now();
     let _execution_time = end_time - start_time;
 
     // println!(

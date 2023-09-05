@@ -156,7 +156,7 @@ pub fn parse_where_condition(input: &str) -> IResult<&str, Where> {
 
     Ok((input, Where::new(left, right, operator)))
 }
-
+#[allow(dead_code)]
 //get the value of where clause
 pub fn get_join_conditions(conditions: &[Where]) -> Vec<String> {
     conditions

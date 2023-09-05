@@ -46,7 +46,7 @@ impl S1Sample {
         })
     }
 }
-
+#[allow(dead_code)]
 pub fn create_sample(
     conn: &Connection,
     sample_fraction: f64,
@@ -90,6 +90,7 @@ pub fn groundtruth(conn: &Connection, query: &str) -> Result<i64, Box<dyn std::e
 }
 
 //hashmap for S*1 Sample with SRSWOR
+#[allow(dead_code)]
 pub fn s1_sample_hashmap(lineitems: &[S1Sample]) -> Vec<HashMap<String, String>> {
     let mut hashmaps = Vec::new();
 
