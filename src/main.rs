@@ -105,8 +105,8 @@ fn main() {
     //seperating join conditions
     let (join_conditions, selection_conditions) = separate_conditions(where_conditions);
 
-    println!("Join Condition: {:#?}", join_conditions);
-    println!("Selection Conditions: {:#?}", selection_conditions);
+    // println!("Join Condition: {:#?}", join_conditions);
+    // println!("Selection Conditions: {:#?}", selection_conditions);
 
     // Connect to SQLite database (or create one if it doesn't exist)
     let conn = db_connection(db_file).unwrap();
@@ -117,6 +117,9 @@ fn main() {
     let database_ground_truth = groundtruth(&conn, &query).unwrap();
     println!("Database Ground Truth: {}", database_ground_truth);
 
+    // let sample_query_result = check_column_condition(&conn, &selection_conditions).unwrap();
+    // println!("sample_query_result {:?}", sample_query_result.len());
+
     let query_result: Vec<i64> =
         query_result(&conn, join_conditions, selection_conditions).unwrap();
 
@@ -124,12 +127,16 @@ fn main() {
 
     //calulating the sample ground truth
     let sum: i64 = query_result.par_iter().sum();
+    // let sum: i64 = sample_query_result.par_iter().sum();
     let sample_ground_truth = sum as f64 / sample_fraction;
     println!("Sample Ground Truth: {}", sample_ground_truth);
 
     //resampling the query result with replacement
     let (bootstrap_sample, bootstrap_time_taken) =
         bootstrap_sums(&query_result, bootstrap_size, sample_fraction);
+    // let (bootstrap_sample, bootstrap_time_taken) =
+    //     bootstrap_sums(&sample_query_result, bootstrap_size, sample_fraction);
+
     // println!("Bootstrap Sample: {:#?}", bootstrap_sample);
     println!("Bootstrap Time Taken: {:.2}s", bootstrap_time_taken);
 

@@ -1,5 +1,5 @@
 use crate::parser::Where;
-use rusqlite::{Connection, Result, Row};
+use rusqlite::{/*params,*/ Connection, Result, Row};
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -76,6 +76,65 @@ impl S2Sample {
         })
     }
 }
+
+//get only the condition column data
+//checking if getting only the condition column will increase the speed
+// pub fn check_column_condition(conn: &Connection, conditions: &Vec<Where>) -> Result<Vec<i64>> {
+//     // Assuming all conditions are for the same column for simplicity
+//     let query = format!("SELECT {} FROM s2_sample", conditions[0].get_left());
+//     let mut stmt = conn.prepare(&query)?;
+//     let column_values: Result<Vec<f64>> = stmt.query_map(params![], |row| row.get(0))?.collect();
+
+//     let mut results = Vec::new();
+//     for value in column_values? {
+//         if conditions
+//             .iter()
+//             .all(|condition| satisfies_condition(value, condition))
+//         {
+//             results.push(1);
+//         } else {
+//             results.push(0);
+//         }
+//     }
+
+//     Ok(results)
+// }
+
+// //check if the condition satisfies
+// fn satisfies_condition(value: f64, condition: &Where) -> bool {
+//     // Check the value against the condition
+//     match condition.get_operator() {
+//         ">" => {
+//             let right_value: f64 = condition.get_right().parse().unwrap_or(0.0);
+//             value > right_value
+//         }
+//         "<" => {
+//             let right_value: f64 = condition.get_right().parse().unwrap_or(0.0);
+//             value < right_value
+//         }
+//         "=" => {
+//             let right_value: f64 = condition.get_right().parse().unwrap_or(0.0);
+//             (value - right_value).abs() < std::f64::EPSILON
+//         }
+//         ">=" => {
+//             let right_value: f64 = condition.get_right().parse().unwrap_or(0.0);
+//             value >= right_value
+//         }
+//         "<=" => {
+//             let right_value: f64 = condition.get_right().parse().unwrap_or(0.0);
+//             value <= right_value
+//         }
+//         "!=" => {
+//             let right_value: f64 = condition.get_right().parse().unwrap_or(0.0);
+//             (value - right_value).abs() > std::f64::EPSILON
+//         }
+//         // Add more operators as needed
+//         _ => {
+//             eprintln!("Unsupported operator: {}", condition.get_operator());
+//             false
+//         }
+//     }
+// }
 
 //fetch the data from database
 pub fn fetch_s2_sample(conn: &Connection) -> Result<Vec<S2Sample>> {

@@ -34,6 +34,29 @@ pub fn bootstrap_sums(data: &[i64], num_resamples: usize, sample_fraction: f64) 
     (bootstrap_sums, elapsed_time)
 }
 
+// pub fn random_sample_with_replacement(sample: &[i64], size: usize, rng: &mut impl Rng) -> Vec<i64> {
+//     (0..size).map(|_| *sample.choose(rng).unwrap()).collect()
+// }
+
+// pub fn bootstrap_sums(data: &[i64], num_resamples: usize, sample_fraction: f64) -> (Vec<i64>, f64) {
+//     let start_time = Instant::now();
+//     let bootstrap_sums: Vec<i64> = (0..num_resamples)
+//         .into_par_iter()
+//         .map_init(
+//             || thread_rng(),
+//             |rng, _| {
+//                 let resampled_data = random_sample_with_replacement(&data, data.len(), rng);
+//                 let sum: i64 = resampled_data.iter().sum();
+//                 (sum as f64 / sample_fraction) as i64
+//             },
+//         )
+//         .collect();
+
+//     let elapsed_time = start_time.elapsed().as_secs_f64();
+
+//     (bootstrap_sums, elapsed_time)
+// }
+
 //calculating mean of bootstrapping ground truth sample
 pub fn calculate_mean(bootstrap_sums: &[i64], bootstrap_size: usize) -> f64 {
     let sum: i64 = bootstrap_sums.par_iter().sum();

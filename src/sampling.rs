@@ -8,32 +8,33 @@ pub fn create_sample_tables(conn: &Connection, sample_fraction: f64) -> Result<(
     conn.execute("DROP TABLE IF EXISTS s4_sample", params![])?;
     conn.execute("DROP TABLE IF EXISTS s5_sample", params![])?;
 
-    // Create s1_sample table structure
+    // Create an empty s1_sample table with the same structure as lineitem
     conn.execute(
         "CREATE TABLE s1_sample AS SELECT * FROM lineitem WHERE 1=0",
         params![],
     )?;
 
-    // Generate shuffled row IDs
+    // Generate a temporary table with shuffled row IDs from the lineitem table
     conn.execute(
         "CREATE TEMP TABLE ids AS SELECT rowid FROM lineitem ORDER BY RANDOM()",
         params![],
     )?;
 
-    // Calculate the number of rows to sample
+    // Calculate the total number of rows in the lineitem table
     let total_rows: i64 =
         conn.query_row("SELECT COUNT(*) FROM lineitem", params![], |row| row.get(0))?;
     let sample_size = (sample_fraction * total_rows as f64).round() as i64;
 
-    // Take first N shuffled IDs as sample
+    // Populate s1_sample with a subset of rows based on the sample fraction
     conn.execute(
         "INSERT INTO s1_sample
          SELECT * FROM lineitem
          WHERE rowid IN (SELECT rowid FROM ids LIMIT ?)",
         params![sample_size],
     )?;
-    println!("s1_sample table created with sampled data.");
-    // Join s1_sample with orders table to create s2_sample
+    // println!("s1_sample table created with sampled data.");
+
+    // Create s2_sample by joining s1_sample with the orders table on the l_orderkey column
     conn.execute(
         "CREATE TABLE IF NOT EXISTS s2_sample AS
          SELECT s1.*, orders.*
@@ -41,9 +42,9 @@ pub fn create_sample_tables(conn: &Connection, sample_fraction: f64) -> Result<(
          JOIN orders ON s1.l_orderkey = orders.o_orderkey",
         params![],
     )?;
-    println!("s2_sample table created with joined data.");
+    // println!("s2_sample table created with joined data.");
 
-    // Join s2_sample with customer table to create s3_sample
+    // Create s3_sample by joining s2_sample with the customer table on the o_custkey column
     conn.execute(
         "CREATE TABLE IF NOT EXISTS s3_sample AS
          SELECT s2.*, customer.*
@@ -51,9 +52,9 @@ pub fn create_sample_tables(conn: &Connection, sample_fraction: f64) -> Result<(
          JOIN customer ON s2.o_custkey = customer.c_custkey",
         params![],
     )?;
-    println!("s3_sample table created with joined data.");
+    // println!("s3_sample table created with joined data.");
 
-    // Join s3_sample with nation table to create s4_sample
+    // Create s4_sample by joining s3_sample with the nation table on the c_nationkey column
     conn.execute(
         "CREATE TABLE IF NOT EXISTS s4_sample AS
          SELECT s3.*, nation.*
@@ -61,9 +62,9 @@ pub fn create_sample_tables(conn: &Connection, sample_fraction: f64) -> Result<(
          JOIN nation ON s3.c_nationkey = nation.n_nationkey",
         params![],
     )?;
-    println!("s4_sample table created with joined data.");
+    // println!("s4_sample table created with joined data.");
 
-    // Join s4_sample with region table to create s5_sample
+    // Create s5_sample by joining s4_sample with the region table on the n_regionkey column
     conn.execute(
         "CREATE TABLE IF NOT EXISTS s5_sample AS
          SELECT s4.*, region.*
@@ -71,7 +72,7 @@ pub fn create_sample_tables(conn: &Connection, sample_fraction: f64) -> Result<(
          JOIN region ON s4.n_regionkey = region.r_regionkey",
         params![],
     )?;
-    println!("s5_sample table created with joined data.");
+    // println!("s5_sample table created with joined data.");
 
     Ok(())
 }
