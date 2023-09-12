@@ -18,6 +18,7 @@ def process_data_and_save(input_file):
         reader = csv.reader(file)
         for row in reader:
             data.append(row)
+        # print(data)
         chunks = [data[x : x + 10] for x in range(1, len(data), 10)]
         # calculation of necessary fields for drawing the graphs
         for a in range(0, 10):
