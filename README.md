@@ -57,7 +57,7 @@ Feel free to adjust the command-line arguments according to your requirements.
 
 **Note:** Make sure to replace `tpch_100m.db`, `data.db`, and `query.sql` with the actual names of your database file and query file, respectively.
 
-## Setting up SQLite Database from TPC-H Datasets
+## Setting up SQLite Database For Experimentation
 
 To set up the SQLite database using the TPC-H dataset, follow these steps:
 
