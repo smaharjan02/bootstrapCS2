@@ -25,7 +25,7 @@ CREATE TABLE lineitem (
 -- Import data into the lineitem table
 .mode tabs
 .separator '|'
-.import 'data_10g/lineitem.tbl' lineitem
+.import 'data_10g/lineitem.tbl' lineitem  --change according to the data folder
 
 
 CREATE TABLE orders (
