@@ -61,32 +61,30 @@ Feel free to adjust the command-line arguments according to your requirements.
 
 To set up the SQLite database using the TPC-H dataset, follow these steps:
 
-Generate TPC-H Dataset:
+1. Generate TPC-H Dataset:
 
 We use the TPC-H-skew repository, available at https://github.com/YSU-Data-Lab/TPC-H-Skew.
 
-Generate Test Data:
+2. Generate Test Data:
 
 For instance, to create a 100MB test dataset, run the following command:
-
+```
 ./dbgen -s 0.1
-Organize Data:
+```
+3. Organize Data:
 
 Place the generated data in a folder, e.g., data_100m.
-
 Move the data_100m folder to the src directory of your project.
 
-Data Cleanup:
+4. Data Cleanup:
 
 Execute the remove.py script to remove any extra | characters at the end of the data.
 
-Create SQLite Database:
-
+5. Create SQLite Database:
 Use the following command to create the SQLite3 database, named tpch_100m.db, and populate the tables with the data from data_100m:
-
-bash
-Copy code
+```
 sqlite3 tpch_100m.db < data_import.sql
+```
 Replace folder names and database filenames as needed for your project.
 
 These steps ensure the setup of the SQLite database with TPC-H datasets. Feel free to reach out if you have any questions or need further clarification!
