@@ -90,3 +90,14 @@ CREATE TABLE region (
 .separator '|'
 .import 'data_10g/region.tbl' region
 
+-- Create indexes on foreign keys for optimization
+CREATE INDEX idx_lineitem_orderkey ON lineitem (l_orderkey);
+CREATE INDEX idx_lineitem_partkey ON lineitem (l_partkey);
+CREATE INDEX idx_lineitem_suppkey ON lineitem (l_suppkey);
+CREATE INDEX idx_lineitem_partsupp ON lineitem (l_partkey, l_suppkey);
+
+CREATE INDEX idx_orders_custkey ON orders (o_custkey);
+
+CREATE INDEX idx_customer_nationkey ON customer (c_nationkey);
+
+CREATE INDEX idx_nation_regionkey ON nation (n_regionkey);
